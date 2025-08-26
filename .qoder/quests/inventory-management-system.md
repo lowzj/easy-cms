@@ -5,12 +5,14 @@
 This document describes the design for a minimal CMS built on Cloudflare Workers that includes inventory management capabilities and AI-powered image recognition for automated data entry. The system extends the existing easy-cms architecture to support inventory tracking, customer management, and intelligent document processing.
 
 ### Core Features
+
 - **Simple Authentication**: JWT-based login system with session management
 - **Inventory Management**: Track stock levels, outbound shipments, and customer information
 - **Monthly Reporting**: Automated monthly outbound shipment summaries
 - **AI-Powered Document Processing**: Use Cloudflare Workers AI to process shipping documents via image upload and extract shipment data automatically
 
 ### Technology Stack
+
 - **Runtime**: Cloudflare Workers
 - **Storage**: Cloudflare D1 (SQLite-compatible database)
 - **Caching**: Cloudflare KV
@@ -25,7 +27,7 @@ The system uses a monorepo approach with a single Cloudflare Worker handling all
 ```mermaid
 graph TB
     Client[Web Client] --> Worker[Single Inventory CMS Worker]
-    
+
     subgraph "Worker Modules"
         Router[Request Router]
         Auth[Auth Module]
@@ -34,25 +36,25 @@ graph TB
         AI[AI Processing Module]
         Report[Report Module]
     end
-    
+
     subgraph "Storage Layer"
         D1[(D1 Database)]
         KV[(KV Cache)]
         R2[(R2 Bucket)]
     end
-    
+
     subgraph "AI Services"
         Vision[Cloudflare Vision AI]
         Text[Text Analysis AI]
     end
-    
+
     Worker --> Router
     Router --> Auth
     Router --> Inventory
     Router --> Customer
     Router --> AI
     Router --> Report
-    
+
     Auth --> D1
     Auth --> KV
     Inventory --> D1
@@ -100,33 +102,43 @@ src/
 ### Module Components
 
 #### 1. Authentication Module (`modules/auth/`)
+
 Handles user authentication and session management:
+
 - JWT token generation and validation
 - Session management with KV storage
 - Role-based access control
 
-#### 2. Inventory Module (`modules/inventory/`)  
+#### 2. Inventory Module (`modules/inventory/`)
+
 Core business logic for inventory operations:
+
 - Stock level tracking
 - Outbound shipment recording
 - Inventory movement validation
 - Atomic stock updates
 
 #### 3. Customer Module (`modules/customer/`)
+
 Customer information management:
+
 - Customer CRUD operations
 - Customer data validation
 - Search and filtering
 
 #### 4. AI Processing Module (`modules/ai/`)
+
 Processes uploaded shipping documents:
+
 - Image analysis and text extraction
 - Structured data parsing
 - Integration with inventory system
 - Confidence scoring and validation
 
 #### 5. Reports Module (`modules/reports/`)
+
 Generates business reports:
+
 - Monthly outbound summaries
 - Dashboard metrics
 - Data aggregation and analysis
@@ -134,18 +146,20 @@ Generates business reports:
 ## Data Models
 
 ### User Model
+
 ```typescript
 interface User {
   id: string;
   username: string;
   passwordHash: string;
-  role: 'admin' | 'operator';
+  role: "admin" | "operator";
   createdAt: Date;
   lastLogin?: Date;
 }
 ```
 
 ### Inventory Item Model
+
 ```typescript
 interface InventoryItem {
   id: string;
@@ -160,6 +174,7 @@ interface InventoryItem {
 ```
 
 ### Customer Model
+
 ```typescript
 interface Customer {
   id: string;
@@ -174,6 +189,7 @@ interface Customer {
 ```
 
 ### Outbound Record Model
+
 ```typescript
 interface OutboundRecord {
   id: string;
@@ -182,7 +198,7 @@ interface OutboundRecord {
   totalAmount: number;
   shipmentDate: Date;
   documentImageUrl?: string;
-  status: 'pending' | 'shipped' | 'delivered';
+  status: "pending" | "shipped" | "delivered";
   createdAt: Date;
   createdBy: string;
   extractedData?: ExtractedShipmentData;
@@ -197,6 +213,7 @@ interface OutboundItem {
 ```
 
 ### Monthly Summary Model
+
 ```typescript
 interface MonthlySummary {
   id: string;
@@ -214,49 +231,49 @@ interface MonthlySummary {
 
 ### Authentication Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/auth/login` | User login | No |
-| POST | `/auth/logout` | User logout | Yes |
-| GET | `/auth/me` | Get current user info | Yes |
+| Method | Endpoint       | Description           | Auth Required |
+| ------ | -------------- | --------------------- | ------------- |
+| POST   | `/auth/login`  | User login            | No            |
+| POST   | `/auth/logout` | User logout           | Yes           |
+| GET    | `/auth/me`     | Get current user info | Yes           |
 
 ### Inventory Management Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/inventory` | List inventory items | Yes |
-| POST | `/api/inventory` | Create inventory item | Yes |
-| PUT | `/api/inventory/:id` | Update inventory item | Yes |
-| DELETE | `/api/inventory/:id` | Delete inventory item | Yes |
-| GET | `/api/inventory/:id/stock` | Get stock level | Yes |
-| PUT | `/api/inventory/:id/stock` | Update stock level | Yes |
+| Method | Endpoint                   | Description           | Auth Required |
+| ------ | -------------------------- | --------------------- | ------------- |
+| GET    | `/api/inventory`           | List inventory items  | Yes           |
+| POST   | `/api/inventory`           | Create inventory item | Yes           |
+| PUT    | `/api/inventory/:id`       | Update inventory item | Yes           |
+| DELETE | `/api/inventory/:id`       | Delete inventory item | Yes           |
+| GET    | `/api/inventory/:id/stock` | Get stock level       | Yes           |
+| PUT    | `/api/inventory/:id/stock` | Update stock level    | Yes           |
 
 ### Customer Management Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/customers` | List customers | Yes |
-| POST | `/api/customers` | Create customer | Yes |
-| PUT | `/api/customers/:id` | Update customer | Yes |
-| DELETE | `/api/customers/:id` | Delete customer | Yes |
+| Method | Endpoint             | Description     | Auth Required |
+| ------ | -------------------- | --------------- | ------------- |
+| GET    | `/api/customers`     | List customers  | Yes           |
+| POST   | `/api/customers`     | Create customer | Yes           |
+| PUT    | `/api/customers/:id` | Update customer | Yes           |
+| DELETE | `/api/customers/:id` | Delete customer | Yes           |
 
 ### Outbound Records Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/outbound` | List outbound records | Yes |
-| POST | `/api/outbound` | Create outbound record | Yes |
-| PUT | `/api/outbound/:id` | Update outbound record | Yes |
-| DELETE | `/api/outbound/:id` | Delete outbound record | Yes |
-| POST | `/api/outbound/upload` | Upload and process document | Yes |
+| Method | Endpoint               | Description                 | Auth Required |
+| ------ | ---------------------- | --------------------------- | ------------- |
+| GET    | `/api/outbound`        | List outbound records       | Yes           |
+| POST   | `/api/outbound`        | Create outbound record      | Yes           |
+| PUT    | `/api/outbound/:id`    | Update outbound record      | Yes           |
+| DELETE | `/api/outbound/:id`    | Delete outbound record      | Yes           |
+| POST   | `/api/outbound/upload` | Upload and process document | Yes           |
 
 ### Reporting Endpoints
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/reports/monthly/:year/:month` | Get monthly summary | Yes |
-| POST | `/api/reports/generate/:year/:month` | Generate monthly report | Yes |
-| GET | `/api/reports/dashboard` | Get dashboard metrics | Yes |
+| Method | Endpoint                             | Description             | Auth Required |
+| ------ | ------------------------------------ | ----------------------- | ------------- |
+| GET    | `/api/reports/monthly/:year/:month`  | Get monthly summary     | Yes           |
+| POST   | `/api/reports/generate/:year/:month` | Generate monthly report | Yes           |
+| GET    | `/api/reports/dashboard`             | Get dashboard metrics   | Yes           |
 
 ## Business Logic Layer
 
@@ -272,7 +289,7 @@ sequenceDiagram
     participant InventoryModule
     participant Database
     participant Cache
-    
+
     Client->>Router: POST /api/outbound
     Router->>AuthModule: Validate JWT token
     AuthModule-->>Router: User context
@@ -294,25 +311,26 @@ Since all modules exist within the same worker context, they can directly import
 
 ```typescript
 // Example of module interaction within single worker
-import { validateSession } from './modules/auth/session.service';
-import { updateInventory } from './modules/inventory/inventory.service';
-import { processDocument } from './modules/ai/document-processor';
+import { validateSession } from "./modules/auth/session.service";
+import { updateInventory } from "./modules/inventory/inventory.service";
+import { processDocument } from "./modules/ai/document-processor";
 
 export async function handleOutboundUpload(request: Request, env: Env) {
   // Authentication
   const user = await validateSession(request, env);
-  
+
   // AI Processing
   const extractedData = await processDocument(uploadedImage, env);
-  
+
   // Inventory Update
   const result = await updateInventory(extractedData, user.id, env);
-  
+
   return new Response(JSON.stringify(result));
 }
 ```
 
 #### Key Operations:
+
 - **Stock Validation**: Ensure sufficient inventory before creating outbound records
 - **Atomic Updates**: Use database transactions for inventory adjustments
 - **Cache Management**: Invalidate relevant cache entries on inventory changes
@@ -332,13 +350,14 @@ flowchart TD
     Validate2 --> Match[Match Items & Customers]
     Match --> CreateRecord[Create Outbound Record]
     CreateRecord --> UpdateStock[Update Inventory]
-    
+
     Validate2 --> Manual[Manual Review Queue]
     Manual --> Approve[Manual Approval]
     Approve --> CreateRecord
 ```
 
 #### AI Processing Pipeline:
+
 1. **File Validation**: Check file type, size, and format
 2. **Image Storage**: Store document image in R2 bucket
 3. **Text Extraction**: Use Cloudflare Vision AI to extract text from image
@@ -348,28 +367,35 @@ flowchart TD
 7. **Record Creation**: Generate outbound record from extracted data using inventory module
 
 #### Module Integration Example:
+
 ```typescript
 // AI module calling inventory module directly
-import { createOutboundRecord } from '../inventory/inventory.service';
-import { findCustomerByName } from '../customer/customer.service';
+import { createOutboundRecord } from "../inventory/inventory.service";
+import { findCustomerByName } from "../customer/customer.service";
 
-export async function processShippingDocument(imageData: ArrayBuffer, env: Env) {
+export async function processShippingDocument(
+  imageData: ArrayBuffer,
+  env: Env
+) {
   // Extract text using AI
   const extractedText = await extractTextFromImage(imageData, env);
-  
+
   // Parse structured data
   const parsedData = await parseShippingData(extractedText, env);
-  
+
   // Match customer
   const customer = await findCustomerByName(parsedData.customerName, env);
-  
+
   // Create outbound record via inventory module
-  const record = await createOutboundRecord({
-    customerId: customer.id,
-    items: parsedData.items,
-    extractedData: parsedData
-  }, env);
-  
+  const record = await createOutboundRecord(
+    {
+      customerId: customer.id,
+      items: parsedData.items,
+      extractedData: parsedData,
+    },
+    env
+  );
+
   return record;
 }
 ```
@@ -379,6 +405,7 @@ export async function processShippingDocument(imageData: ArrayBuffer, env: Env) 
 Automated generation of monthly summaries with key metrics:
 
 #### Report Components:
+
 - Total number of shipments
 - Total revenue generated
 - Top customers by volume/revenue
@@ -389,11 +416,12 @@ Automated generation of monthly summaries with key metrics:
 ## Authentication and Authorization
 
 ### JWT Token Structure
+
 ```typescript
 interface JWTPayload {
   userId: string;
   username: string;
-  role: 'admin' | 'operator';
+  role: "admin" | "operator";
   iat: number;
   exp: number;
 }
@@ -401,16 +429,17 @@ interface JWTPayload {
 
 ### Role-Based Access Control
 
-| Resource | Admin | Operator |
-|----------|-------|----------|
-| User Management | Read/Write | None |
+| Resource             | Admin      | Operator   |
+| -------------------- | ---------- | ---------- |
+| User Management      | Read/Write | None       |
 | Inventory Management | Read/Write | Read/Write |
-| Customer Management | Read/Write | Read/Write |
-| Outbound Records | Read/Write | Read/Write |
-| Monthly Reports | Read/Write | Read Only |
-| System Settings | Read/Write | None |
+| Customer Management  | Read/Write | Read/Write |
+| Outbound Records     | Read/Write | Read/Write |
+| Monthly Reports      | Read/Write | Read Only  |
+| System Settings      | Read/Write | None       |
 
 ### Session Management
+
 - Sessions stored in Cloudflare KV with 24-hour TTL
 - IP address validation for enhanced security
 - Automatic session cleanup for expired tokens
@@ -442,7 +471,7 @@ CREATE TABLE inventory_items (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Customers table  
+-- Customers table
 CREATE TABLE customers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -492,6 +521,7 @@ CREATE TABLE monthly_summaries (
 ```
 
 ### Indexes
+
 ```sql
 CREATE INDEX idx_outbound_records_customer_id ON outbound_records(customer_id);
 CREATE INDEX idx_outbound_records_shipment_date ON outbound_records(shipment_date);
@@ -516,7 +546,7 @@ sequenceDiagram
     participant TextAI
     participant InventoryModule
     participant Database
-    
+
     Client->>Router: Upload document image
     Router->>AIModule: Process document
     AIModule->>R2: Store image
@@ -535,41 +565,43 @@ sequenceDiagram
 ### Single Worker AI Processing
 
 All AI operations happen within the same execution context, providing:
+
 - **Reduced Latency**: No network calls between services
 - **Simplified Error Handling**: Single error boundary for the entire flow
 - **Shared Context**: Access to the same request context and environment variables
 - **Atomic Operations**: Database transactions can span AI processing and data storage
 
 #### AI Module Structure:
+
 ```typescript
 // src/modules/ai/document-processor.ts
 export class DocumentProcessor {
   constructor(private env: Env) {}
-  
+
   async processDocument(imageData: ArrayBuffer): Promise<ProcessingResult> {
     // All AI operations within same worker context
     const textContent = await this.extractText(imageData);
     const structuredData = await this.parseData(textContent);
     const validatedData = await this.validateData(structuredData);
-    
+
     return {
       extractedData: validatedData,
       confidence: this.calculateConfidence(validatedData),
-      requiresReview: this.shouldReview(validatedData)
+      requiresReview: this.shouldReview(validatedData),
     };
   }
-  
+
   private async extractText(imageData: ArrayBuffer): Promise<string> {
-    return await this.env.AI.run('@cf/microsoft/resnet-50', {
-      image: [...new Uint8Array(imageData)]
+    return await this.env.AI.run("@cf/microsoft/resnet-50", {
+      image: [...new Uint8Array(imageData)],
     });
   }
-  
+
   private async parseData(text: string): Promise<ExtractedShipmentData> {
-    const response = await this.env.AI.run('@cf/meta/llama-2-7b-chat-int8', {
-      prompt: `Extract shipping information from: ${text}`
+    const response = await this.env.AI.run("@cf/meta/llama-2-7b-chat-int8", {
+      prompt: `Extract shipping information from: ${text}`,
     });
-    
+
     return JSON.parse(response.response);
   }
 }
@@ -578,12 +610,14 @@ export class DocumentProcessor {
 ### AI Models Used
 
 #### 1. Vision Model (Text Extraction)
+
 - **Model**: `@cf/microsoft/resnet-50` or `@cf/meta/llama-2-7b-chat-int8`
 - **Purpose**: Extract text content from shipping document images
 - **Input**: Image file (JPEG/PNG)
 - **Output**: Raw text content
 
-#### 2. Text Analysis Model (Data Parsing)  
+#### 2. Text Analysis Model (Data Parsing)
+
 - **Model**: `@cf/meta/llama-2-7b-chat-int8`
 - **Purpose**: Parse extracted text into structured data
 - **Input**: Raw text + parsing instructions
@@ -615,11 +649,13 @@ interface ExtractedItem {
 ### Validation and Quality Control
 
 #### Confidence Scoring
+
 - Each extracted field includes a confidence score (0-1)
 - Records with low confidence scores are flagged for manual review
 - Threshold: 0.7 for automatic processing, 0.4+ for manual review queue
 
 #### Fallback Strategies
+
 - If AI extraction fails, fall back to manual data entry
 - Partial extraction results are saved for human verification
 - Learning from manual corrections to improve future extraction
@@ -635,7 +671,7 @@ graph LR
     Cache -->|Miss| Database[(Database)]
     Database --> Store[Store in Cache]
     Store --> Return
-    
+
     subgraph "Cache Layers"
         KV1[Inventory Items - TTL: 1h]
         KV2[Customer Data - TTL: 4h]
@@ -644,6 +680,7 @@ graph LR
 ```
 
 #### Cache Configuration
+
 - **Inventory Items**: 1-hour TTL (frequent updates)
 - **Customer Data**: 4-hour TTL (moderate updates)
 - **Monthly Reports**: 24-hour TTL (static after generation)
@@ -652,23 +689,27 @@ graph LR
 ### Database Optimization
 
 #### Query Optimization
+
 - Use prepared statements for frequent queries
 - Implement pagination for large result sets
 - Create composite indexes for common query patterns
 - Use connection pooling for database efficiency
 
 #### Bulk Operations
+
 - Batch inventory updates during outbound record creation
 - Use database transactions for multi-table operations
 - Implement bulk import capabilities for initial data migration
 
 ### Edge Computing Benefits
+
 - Global distribution via Cloudflare's edge network
 - Sub-100ms response times worldwide
 - Automatic scaling based on demand
 - Built-in DDoS protection and security
 
 ### Single Worker Architecture Benefits
+
 - **Simplified Deployment**: Single deployable unit with all functionality
 - **Reduced Cold Starts**: Only one worker needs to initialize
 - **Lower Latency**: No inter-service communication overhead
@@ -680,18 +721,21 @@ graph LR
 ## Security Considerations
 
 ### Data Protection
+
 - All sensitive data encrypted at rest in D1 database
 - JWT tokens signed with rotating secrets
 - Image uploads validated for file type and size
 - Input sanitization for all user-provided data
 
 ### Access Control
+
 - Role-based permissions enforced at API level
 - Rate limiting to prevent abuse
 - Session validation on every request
 - Audit logging for all data modifications
 
 ### AI Security
+
 - Uploaded images scanned for malicious content
 - AI model outputs validated before database insertion
 - Extracted data sanitized to prevent injection attacks
@@ -700,6 +744,7 @@ graph LR
 ## Testing Strategy
 
 ### Unit Testing
+
 - **Module Testing**: Individual module function testing with mocked dependencies
 - **Service Layer Testing**: Database operation testing with mock data
 - **AI Logic Validation**: AI extraction logic validation with sample documents
@@ -707,6 +752,7 @@ graph LR
 - **Utility Function Testing**: Shared utility and helper function testing
 
 ### Integration Testing
+
 - **End-to-End Workflow Testing**: Complete request flows from routing to response
 - **Module Integration Testing**: Testing interactions between modules within the worker
 - **Database Transaction Testing**: Multi-table operations and rollback scenarios
@@ -714,52 +760,56 @@ graph LR
 - **Cache Integration Testing**: KV storage and cache invalidation testing
 
 ### Worker-Specific Testing
+
 ```typescript
 // Example test structure for single worker
-describe('Inventory CMS Worker', () => {
+describe("Inventory CMS Worker", () => {
   let worker: WorkerEntrypoint;
   let env: Env;
-  
+
   beforeEach(() => {
     env = getMockEnv();
     worker = new WorkerEntrypoint();
   });
-  
-  describe('Authentication Module', () => {
-    it('should validate JWT tokens', async () => {
-      const request = new Request('https://example.com/api/inventory', {
-        headers: { 'Authorization': 'Bearer valid-token' }
+
+  describe("Authentication Module", () => {
+    it("should validate JWT tokens", async () => {
+      const request = new Request("https://example.com/api/inventory", {
+        headers: { Authorization: "Bearer valid-token" },
       });
-      
+
       const response = await worker.fetch(request, env);
       expect(response.status).toBe(200);
     });
   });
-  
-  describe('AI Processing Module', () => {
-    it('should process shipping documents', async () => {
+
+  describe("AI Processing Module", () => {
+    it("should process shipping documents", async () => {
       const formData = new FormData();
-      formData.append('document', mockImageFile);
-      
-      const request = new Request('https://example.com/api/outbound/upload', {
-        method: 'POST',
-        body: formData
+      formData.append("document", mockImageFile);
+
+      const request = new Request("https://example.com/api/outbound/upload", {
+        method: "POST",
+        body: formData,
       });
-      
+
       const response = await worker.fetch(request, env);
       const result = await response.json();
-      
+
       expect(result.extractedData).toBeDefined();
       expect(result.confidence).toBeGreaterThan(0.7);
     });
   });
-  
-  describe('Module Integration', () => {
-    it('should create outbound record from AI extraction', async () => {
+
+  describe("Module Integration", () => {
+    it("should create outbound record from AI extraction", async () => {
       // Test that AI module can call inventory module successfully
       const mockExtractedData = getMockExtractedData();
-      const result = await processDocumentAndCreateRecord(mockExtractedData, env);
-      
+      const result = await processDocumentAndCreateRecord(
+        mockExtractedData,
+        env
+      );
+
       expect(result.outboundRecord).toBeDefined();
       expect(result.inventoryUpdated).toBe(true);
     });
@@ -768,6 +818,7 @@ describe('Inventory CMS Worker', () => {
 ```
 
 ### Performance Testing
+
 - **Single Worker Load Testing**: Concurrent request handling within worker limits
 - **Memory Usage Monitoring**: Ensure worker stays within Cloudflare's memory limits
 - **Database Query Performance**: Optimize queries for single worker access patterns
@@ -775,6 +826,7 @@ describe('Inventory CMS Worker', () => {
 - **Cache Efficiency Testing**: Validate cache hit ratios and performance gains
 
 ### Test Data Management
+
 - **Module-Specific Mock Data**: Isolated test data for each module
 - **Shared Test Utilities**: Common test helpers for worker testing
 - **AI Mock Responses**: Consistent AI responses for predictable testing
